@@ -1,0 +1,304 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Aurora — light */
+    --background: 220 30% 98%;
+    --foreground: 230 35% 9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 230 35% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 35% 9%;
+
+    /* Indigo primary */
+    --primary: 232 70% 56%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 218 95% 65%;
+
+    /* Mint secondary */
+    --secondary: 165 70% 45%;
+    --secondary-foreground: 230 35% 9%;
+
+    --muted: 225 25% 95%;
+    --muted-foreground: 230 12% 42%;
+
+    /* Soft cyan accent */
+    --accent: 188 85% 55%;
+    --accent-foreground: 230 35% 9%;
+
+    --destructive: 350 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 20% 90%;
+    --input: 225 20% 92%;
+    --ring: 232 70% 56%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 230 20% 25%;
+    --sidebar-primary: 232 70% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 25% 95%;
+    --sidebar-accent-foreground: 230 35% 9%;
+    --sidebar-border: 225 20% 90%;
+    --sidebar-ring: 232 70% 56%;
+
+    /* Categories — recolored to aurora family */
+    --category-school: 232 70% 56%;
+    --category-sports: 165 70% 45%;
+    --category-medical: 350 75% 55%;
+    --category-social: 12 80% 60%;
+    --category-general: 230 12% 50%;
+
+    /* Typography */
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* Editorial shadows — sharper, layered */
+    --shadow-soft: 0 1px 2px hsl(230 35% 9% / 0.04), 0 2px 8px hsl(230 35% 9% / 0.04);
+    --shadow-card: 0 2px 4px hsl(230 35% 9% / 0.04), 0 8px 24px hsl(230 35% 9% / 0.06);
+    --shadow-elevated: 0 8px 16px hsl(230 35% 9% / 0.06), 0 24px 60px hsl(232 70% 56% / 0.12);
+    --shadow-glow: 0 0 40px hsl(232 70% 56% / 0.18), 0 0 80px hsl(188 85% 55% / 0.10);
+
+    /* Rainbow brand gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(12 85% 62%) 0%, hsl(28 90% 60%) 20%, hsl(48 95% 58%) 40%, hsl(150 60% 50%) 65%, hsl(180 70% 42%) 85%, hsl(190 80% 38%) 100%);
+    --gradient-aurora: linear-gradient(120deg, hsl(12 85% 62%) 0%, hsl(28 90% 60%) 22%, hsl(48 95% 58%) 42%, hsl(150 60% 50%) 65%, hsl(180 70% 42%) 85%, hsl(190 80% 38%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(0 80% 62%), hsl(35 90% 60%), hsl(50 95% 58%));
+    --gradient-surface: radial-gradient(ellipse at top, hsl(232 80% 96%) 0%, hsl(220 30% 98%) 50%);
+    --gradient-mesh:
+      radial-gradient(at 15% 20%, hsl(232 80% 92% / 0.7) 0px, transparent 50%),
+      radial-gradient(at 85% 10%, hsl(188 85% 90% / 0.6) 0px, transparent 50%),
+      radial-gradient(at 60% 90%, hsl(165 70% 88% / 0.5) 0px, transparent 50%);
+  }
+
+  .dark {
+    /* Aurora — dark */
+    --background: 230 30% 5%;
+    --foreground: 220 25% 95%;
+
+    --card: 230 25% 9%;
+    --card-foreground: 220 25% 95%;
+
+    --popover: 230 25% 9%;
+    --popover-foreground: 220 25% 95%;
+
+    --primary: 218 95% 65%;
+    --primary-foreground: 230 30% 5%;
+    --primary-glow: 188 85% 60%;
+
+    --secondary: 165 65% 50%;
+    --secondary-foreground: 230 30% 5%;
+
+    --muted: 230 22% 13%;
+    --muted-foreground: 220 15% 65%;
+
+    --accent: 188 85% 60%;
+    --accent-foreground: 230 30% 5%;
+
+    --destructive: 350 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 230 20% 18%;
+    --input: 230 20% 16%;
+    --ring: 218 95% 65%;
+
+    --sidebar-background: 230 28% 7%;
+    --sidebar-foreground: 220 20% 80%;
+    --sidebar-primary: 218 95% 65%;
+    --sidebar-primary-foreground: 230 30% 5%;
+    --sidebar-accent: 230 22% 13%;
+    --sidebar-accent-foreground: 220 25% 95%;
+    --sidebar-border: 230 20% 16%;
+    --sidebar-ring: 218 95% 65%;
+
+    --category-school: 218 95% 65%;
+    --category-sports: 165 65% 55%;
+    --category-medical: 350 70% 60%;
+    --category-social: 12 80% 65%;
+    --category-general: 220 15% 60%;
+
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.5), 0 2px 8px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 2px 4px hsl(0 0% 0% / 0.4), 0 8px 24px hsl(0 0% 0% / 0.4);
+    --shadow-elevated: 0 8px 16px hsl(0 0% 0% / 0.5), 0 24px 60px hsl(218 95% 30% / 0.4);
+    --shadow-glow: 0 0 40px hsl(218 95% 65% / 0.3), 0 0 80px hsl(188 85% 60% / 0.15);
+
+    --gradient-primary: linear-gradient(135deg, hsl(12 80% 56%) 0%, hsl(28 85% 54%) 20%, hsl(48 90% 52%) 40%, hsl(150 55% 44%) 65%, hsl(180 70% 36%) 85%, hsl(190 80% 32%) 100%);
+    --gradient-aurora: linear-gradient(120deg, hsl(12 80% 56%) 0%, hsl(28 85% 54%) 22%, hsl(48 90% 52%) 42%, hsl(150 55% 44%) 65%, hsl(180 70% 36%) 85%, hsl(190 80% 32%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(0 75% 55%), hsl(35 85% 54%), hsl(50 90% 52%));
+    --gradient-surface: radial-gradient(ellipse at top, hsl(232 50% 10%) 0%, hsl(230 30% 5%) 50%);
+    --gradient-mesh:
+      radial-gradient(at 15% 20%, hsl(232 80% 25% / 0.5) 0px, transparent 50%),
+      radial-gradient(at 85% 10%, hsl(188 85% 25% / 0.45) 0px, transparent 50%),
+      radial-gradient(at 60% 90%, hsl(12 80% 25% / 0.4) 0px, transparent 50%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    font-feature-settings: "ss01";
+  }
+
+  /* Sleek scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.25);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.45); background-clip: padding-box; border: 2px solid transparent; }
+
+  /* Selection */
+  ::selection { background: hsl(var(--primary) / 0.25); color: hsl(var(--foreground)); }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-body { font-family: var(--font-body); }
+  .font-mono { font-family: var(--font-mono); }
+
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+
+  .gradient-primary { background: var(--gradient-primary); }
+  .gradient-aurora { background: var(--gradient-aurora); }
+  .gradient-warm { background: var(--gradient-warm); }
+  .gradient-surface { background: var(--gradient-surface); }
+  .gradient-mesh { background-image: var(--gradient-mesh); }
+
+  /* Premium glass — frosted, with subtle ring */
+  .glass {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  .glass-strong {
+    background: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid hsl(var(--border) / 0.8);
+  }
+
+  /* Editorial display utilities */
+  .text-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+  }
+
+  .text-display-italic {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
+
+  /* Animated aurora gradient text */
+  .text-gradient-aurora {
+    background: var(--gradient-aurora);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: aurora-pan 12s ease-in-out infinite;
+  }
+
+  /* Hairline ring */
+  .ring-hairline {
+    box-shadow: inset 0 0 0 1px hsl(var(--border));
+  }
+
+  /* Animated background mesh */
+  .bg-mesh-animated {
+    position: relative;
+    isolation: isolate;
+  }
+  .bg-mesh-animated::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: var(--gradient-mesh);
+    z-index: -1;
+    pointer-events: none;
+    animation: mesh-drift 30s ease-in-out infinite alternate;
+  }
+
+  @keyframes mesh-drift {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    100% { transform: translate3d(-2%, 2%, 0) scale(1.05); }
+  }
+
+  @keyframes aurora-pan {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  .animate-float { animation: float-slow 6s ease-in-out infinite; }
+
+  /* Noise texture overlay for editorial depth */
+  .noise::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+}
+
+@layer components {
+  /* Editorial card — subtle, premium */
+  .card-editorial {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+  }
+  .card-editorial:hover {
+    box-shadow: var(--shadow-elevated);
+    border-color: hsl(var(--primary) / 0.3);
+  }
+}

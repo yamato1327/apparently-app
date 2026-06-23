@@ -1,0 +1,1 @@
+ALTER TABLE public.reading_books ADD COLUMN IF NOT EXISTS cover_url TEXT;

@@ -1,0 +1,1 @@
+ALTER TABLE public.email_preferences ADD COLUMN cc_email TEXT;
