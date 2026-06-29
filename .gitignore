@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Claude context file
+CLAUDE.md
+claude-code-prompts/*
+
 # Environment variables
 .env
 .env.*
