@@ -23,9 +23,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      // Google OAuth sign-ins (login or a dedicated "Connect Gmail" flow) carry
+      // provider tokens on the session — persist them for Edge Functions to use.
+      if (event === "SIGNED_IN" && session?.provider_token && session?.provider_refresh_token) {
+        supabase
+          .from("user_integrations")
+          .upsert(
+            {
+              user_id: session.user.id,
+              google_access_token: session.provider_token,
+              google_refresh_token: session.provider_refresh_token,
+              google_token_expiry: new Date(Date.now() + 3600 * 1000).toISOString(),
+              google_email: session.user.email,
+              gmail_connected: true,
+            },
+            { onConflict: "user_id" }
+          )
+          .then(({ error }) => {
+            if (error) console.error("Failed to save Google integration tokens:", error);
+          });
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {

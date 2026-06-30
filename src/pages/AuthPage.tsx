@@ -19,6 +19,11 @@ const AuthPage = () => {
         provider: "google",
         options: {
           redirectTo: window.location.origin,
+          scopes: "openid email profile https://www.googleapis.com/auth/gmail.readonly",
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
       if (error) throw error;
