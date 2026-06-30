@@ -120,8 +120,8 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -170,100 +170,93 @@ Tone: warm, brief, no fluff. Use markdown sparingly. If you have everything you 
       : "\n\nNo reminder drafts yet.";
     const contextNote = draftNote + reminderNote;
 
-    const aiMessages = [
-      { role: "system", content: systemPrompt + contextNote },
-      ...expanded,
-    ];
+    // Anthropic requires the message list to start on a "user" turn — drop any
+    // leading assistant turns (e.g. the canned chat starter) before sending.
+    let aiMessages = expanded;
+    while (aiMessages.length > 0 && aiMessages[0].role !== "user") {
+      aiMessages = aiMessages.slice(1);
+    }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        system: systemPrompt + contextNote,
         messages: aiMessages,
         tools: [
           {
-            type: "function",
-            function: {
-              name: "reply_with_drafts",
-              description: "Reply to the parent and return the complete updated lists of draft calendar events AND reminders.",
-              parameters: {
-                type: "object",
-                properties: {
-                  assistantMessage: {
-                    type: "string",
-                    description: "Conversational reply to the parent (markdown ok). Keep it brief.",
-                  },
-                  drafts: {
-                    type: "array",
-                    description: "FULL updated list of draft events (replace previous list).",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        description: { type: "string" },
-                        date: { type: "string", description: "YYYY-MM-DD" },
-                        time: { type: "string", description: "HH:MM 24h or empty" },
-                        category: { type: "string", enum: ["school", "sports", "medical", "social", "general"] },
-                        childName: { type: "string" },
-                        emoji: { type: "string" },
-                        isRecurring: { type: "boolean" },
-                        recurrenceMode: { type: "string", enum: ["daily", "weekly", "custom", "monthly"] },
-                        recurrenceDays: {
-                          type: "array",
-                          items: { type: "integer", minimum: 0, maximum: 6 },
-                        },
-                        isMilestone: { type: "boolean" },
-                        milestoneRemindDaysBefore: { type: "integer", minimum: 1, maximum: 90 },
+            name: "reply_with_drafts",
+            description: "Reply to the parent and return the complete updated lists of draft calendar events AND reminders.",
+            input_schema: {
+              type: "object",
+              properties: {
+                assistantMessage: {
+                  type: "string",
+                  description: "Conversational reply to the parent (markdown ok). Keep it brief.",
+                },
+                drafts: {
+                  type: "array",
+                  description: "FULL updated list of draft events (replace previous list).",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      date: { type: "string", description: "YYYY-MM-DD" },
+                      time: { type: "string", description: "HH:MM 24h or empty" },
+                      category: { type: "string", enum: ["school", "sports", "medical", "social", "general"] },
+                      childName: { type: "string" },
+                      emoji: { type: "string" },
+                      isRecurring: { type: "boolean" },
+                      recurrenceMode: { type: "string", enum: ["daily", "weekly", "custom", "monthly"] },
+                      recurrenceDays: {
+                        type: "array",
+                        items: { type: "integer", minimum: 0, maximum: 6 },
                       },
-                      required: ["title", "date", "category", "emoji"],
-                      additionalProperties: false,
+                      isMilestone: { type: "boolean" },
+                      milestoneRemindDaysBefore: { type: "integer", minimum: 1, maximum: 90 },
                     },
-                  },
-                  reminders: {
-                    type: "array",
-                    description: "FULL updated list of draft REMINDERS (one-off notices with NO time). Replace previous list.",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        noticeDate: { type: "string", description: "YYYY-MM-DD" },
-                        expiresAfter: { type: "string", description: "YYYY-MM-DD" },
-                        category: { type: "string", enum: ["uniform", "bring", "dress_up", "permission", "general"] },
-                        emoji: { type: "string" },
-                        childName: { type: "string" },
-                        priority: { type: "string", enum: ["normal", "high"] },
-                      },
-                      required: ["title", "noticeDate", "category"],
-                      additionalProperties: false,
-                    },
+                    required: ["title", "date", "category", "emoji"],
                   },
                 },
-                required: ["assistantMessage", "drafts", "reminders"],
-                additionalProperties: false,
+                reminders: {
+                  type: "array",
+                  description: "FULL updated list of draft REMINDERS (one-off notices with NO time). Replace previous list.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      noticeDate: { type: "string", description: "YYYY-MM-DD" },
+                      expiresAfter: { type: "string", description: "YYYY-MM-DD" },
+                      category: { type: "string", enum: ["uniform", "bring", "dress_up", "permission", "general"] },
+                      emoji: { type: "string" },
+                      childName: { type: "string" },
+                      priority: { type: "string", enum: ["normal", "high"] },
+                    },
+                    required: ["title", "noticeDate", "category"],
+                  },
+                },
               },
+              required: ["assistantMessage", "drafts", "reminders"],
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "reply_with_drafts" } },
+        tool_choice: { type: "tool", name: "reply_with_drafts" },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
+      console.error("Anthropic API error:", response.status, errText);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
           status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings." }), {
-          status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -274,10 +267,10 @@ Tone: warm, brief, no fluff. Use markdown sparingly. If you have everything you 
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    const fallbackText = data.choices?.[0]?.message?.content;
+    const toolUseBlock = data.content?.find((block: any) => block.type === "tool_use");
+    const fallbackText = data.content?.find((block: any) => block.type === "text")?.text;
 
-    if (!toolCall) {
+    if (!toolUseBlock) {
       return new Response(
         JSON.stringify({
           assistantMessage: fallbackText || "Sorry, I couldn't process that — try again?",
@@ -288,7 +281,7 @@ Tone: warm, brief, no fluff. Use markdown sparingly. If you have everything you 
       );
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
+    const parsed = toolUseBlock.input;
     return new Response(
       JSON.stringify({
         assistantMessage: parsed.assistantMessage || "",

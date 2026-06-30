@@ -68,9 +68,9 @@ serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const today = new Date().toISOString().split("T")[0];
@@ -104,15 +104,16 @@ Extract ALL events you can find. For each event return:
 If dates are relative (e.g. "next Tuesday"), resolve them relative to today (${today}).
 If you cannot determine a date, use today's date.`;
 
-    const messages: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
+    const messages: any[] = [];
 
     if (imageBase64) {
+      const match = imageBase64.match(/^data:(.+?);base64,(.*)$/);
+      const mediaType = match?.[1] || "image/png";
+      const imageData = match?.[2] || imageBase64;
       messages.push({
         role: "user",
         content: [
-          { type: "image_url", image_url: { url: imageBase64 } },
+          { type: "image", source: { type: "base64", media_type: mediaType, data: imageData } },
           {
             type: "text",
             text: "Extract all events from this image. Return them as structured data.",
@@ -126,69 +127,61 @@ If you cannot determine a date, use today's date.`;
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        system: systemPrompt,
         messages,
         tools: [
           {
-            type: "function",
-            function: {
-              name: "extract_events",
-              description: "Extract calendar events from the provided content",
-              parameters: {
-                type: "object",
-                properties: {
-                  events: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        description: { type: "string" },
-                        date: { type: "string", description: "YYYY-MM-DD format" },
-                        time: { type: "string", description: "HH:MM 24-hour format or null" },
-                        category: {
-                          type: "string",
-                          enum: ["school", "sports", "medical", "social", "general"],
-                        },
-                        childName: { type: "string", description: "Child name or null" },
-                        emoji: { type: "string", description: "A single fun emoji representing this specific event" },
+            name: "extract_events",
+            description: "Extract calendar events from the provided content",
+            input_schema: {
+              type: "object",
+              properties: {
+                events: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      date: { type: "string", description: "YYYY-MM-DD format" },
+                      time: { type: "string", description: "HH:MM 24-hour format or null" },
+                      category: {
+                        type: "string",
+                        enum: ["school", "sports", "medical", "social", "general"],
                       },
-                      required: ["title", "date", "category", "emoji"],
-                      additionalProperties: false,
+                      childName: { type: "string", description: "Child name or null" },
+                      emoji: { type: "string", description: "A single fun emoji representing this specific event" },
                     },
+                    required: ["title", "date", "category", "emoji"],
                   },
                 },
-                required: ["events"],
-                additionalProperties: false,
               },
+              required: ["events"],
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "extract_events" } },
+        tool_choice: { type: "tool", name: "extract_events" },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
+      console.error("Anthropic API error:", response.status, errText);
 
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -199,16 +192,16 @@ If you cannot determine a date, use today's date.`;
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const toolUseBlock = data.content?.find((block: any) => block.type === "tool_use");
 
-    if (!toolCall) {
+    if (!toolUseBlock) {
       return new Response(
         JSON.stringify({ error: "AI did not return structured events", events: [] }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const extracted = JSON.parse(toolCall.function.arguments);
+    const extracted = toolUseBlock.input;
 
     return new Response(
       JSON.stringify({ events: extracted.events || [] }),
