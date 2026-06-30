@@ -572,6 +572,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_integrations: {
+        Row: {
+          created_at: string
+          gmail_connected: boolean
+          gmail_history_id: string | null
+          gmail_last_scanned_at: string | null
+          google_access_token: string | null
+          google_email: string | null
+          google_refresh_token: string | null
+          google_token_expiry: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gmail_connected?: boolean
+          gmail_history_id?: string | null
+          gmail_last_scanned_at?: string | null
+          google_access_token?: string | null
+          google_email?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gmail_connected?: boolean
+          gmail_history_id?: string | null
+          gmail_last_scanned_at?: string | null
+          google_access_token?: string | null
+          google_email?: string | null
+          google_refresh_token?: string | null
+          google_token_expiry?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
