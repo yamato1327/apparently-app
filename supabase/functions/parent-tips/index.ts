@@ -51,9 +51,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const today = new Date().toISOString().split("T")[0];
@@ -218,47 +218,46 @@ For EACH milestone, return an object with:
       additionalProperties: false,
     };
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        system: "You are an emotionally intelligent parenting coach who knows this family's schedule intimately. You help parents be calmer, more present, and better prepared.",
         messages: [
-          { role: "system", content: "You are an emotionally intelligent parenting coach who knows this family's schedule intimately. You help parents be calmer, more present, and better prepared." },
           { role: "user", content: prompt },
         ],
         tools: [
           {
-            type: "function",
-            function: {
-              name: "parent_insights",
-              description: "Return structured parent insights for 5 time slots",
-              parameters: {
-                type: "object",
-                properties: {
-                  today_morning: { type: "array", items: tipSchema },
-                  today_pickup: { type: "array", items: tipSchema },
-                  today_evening: { type: "array", items: tipSchema },
-                  tomorrow_morning: { type: "array", items: tipSchema },
-                  tomorrow_pickup: { type: "array", items: tipSchema },
-                  milestone_focus: { type: "array", items: milestoneSchema },
-                },
-                required: ["today_morning", "today_pickup", "today_evening", "tomorrow_morning", "tomorrow_pickup", "milestone_focus"],
-                additionalProperties: false,
+            name: "parent_insights",
+            description: "Return structured parent insights for 5 time slots",
+            input_schema: {
+              type: "object",
+              properties: {
+                today_morning: { type: "array", items: tipSchema },
+                today_pickup: { type: "array", items: tipSchema },
+                today_evening: { type: "array", items: tipSchema },
+                tomorrow_morning: { type: "array", items: tipSchema },
+                tomorrow_pickup: { type: "array", items: tipSchema },
+                milestone_focus: { type: "array", items: milestoneSchema },
               },
+              required: ["today_morning", "today_pickup", "today_evening", "tomorrow_morning", "tomorrow_pickup", "milestone_focus"],
+              additionalProperties: false,
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "parent_insights" } },
+        tool_choice: { type: "tool", name: "parent_insights" },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
+      console.error("Anthropic API error:", response.status, errText);
 
       if (response.status === 429) {
         return new Response(
@@ -274,16 +273,16 @@ For EACH milestone, return an object with:
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const toolUseBlock = data.content?.find((block: any) => block.type === "tool_use");
 
-    if (!toolCall) {
+    if (!toolUseBlock?.input) {
       return new Response(
         JSON.stringify(emptySlots),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const extracted = JSON.parse(toolCall.function.arguments);
+    const extracted = toolUseBlock.input;
 
     return new Response(
       JSON.stringify({

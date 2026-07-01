@@ -36,8 +36,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) {
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "AI not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -53,49 +53,55 @@ Identify the book title if visible. Then craft 3 short, warm conversation questi
 - Question 3: a generic reflection question (feelings / personal connection / what it reminded them of).
 Keep questions kid-friendly and ${ageHint ? `appropriate for ${ageHint}` : "age-appropriate"}.`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const match = body.image.match(/^data:(.+?);base64,(.*)$/);
+    const mediaType = match?.[1] || "image/jpeg";
+    const imageData = match?.[2] || body.image;
+
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        system: sys,
         messages: [
-          { role: "system", content: sys },
           {
             role: "user",
             content: [
+              { type: "image", source: { type: "base64", media_type: mediaType, data: imageData } },
               { type: "text", text: "Identify the book and produce the 3 questions." },
-              { type: "image_url", image_url: { url: body.image } },
             ],
           },
         ],
         tools: [{
-          type: "function",
-          function: {
-            name: "reading_questions",
-            description: "Return book title and 3 conversation questions",
-            parameters: {
-              type: "object",
-              properties: {
-                title: { type: "string", description: "Detected book title, or empty if unknown" },
-                question_1: { type: "string" },
-                question_2: { type: "string" },
-                question_3: { type: "string" },
-              },
-              required: ["title", "question_1", "question_2", "question_3"],
-              additionalProperties: false,
+          name: "reading_questions",
+          description: "Return book title and 3 conversation questions",
+          input_schema: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Detected book title, or empty string if unknown" },
+              question_1: { type: "string" },
+              question_2: { type: "string" },
+              question_3: { type: "string" },
             },
+            required: ["title", "question_1", "question_2", "question_3"],
+            additionalProperties: false,
           },
         }],
-        tool_choice: { type: "function", function: { name: "reading_questions" } },
+        tool_choice: { type: "tool", name: "reading_questions" },
       }),
     });
 
     if (!aiRes.ok) {
       const t = await aiRes.text();
-      console.error("AI gateway error", aiRes.status, t);
-      const status = aiRes.status === 429 || aiRes.status === 402 ? aiRes.status : 502;
-      const msg = aiRes.status === 429 ? "Rate limit exceeded, please try again shortly."
-        : aiRes.status === 402 ? "AI credits exhausted. Add credits in Workspace settings."
+      console.error("Anthropic API error", aiRes.status, t);
+      const status = aiRes.status === 429 ? 429 : 502;
+      const msg = aiRes.status === 429
+        ? "Rate limit exceeded, please try again shortly."
         : "AI request failed";
       return new Response(JSON.stringify({ error: msg }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -103,9 +109,11 @@ Keep questions kid-friendly and ${ageHint ? `appropriate for ${ageHint}` : "age-
     }
 
     const json = await aiRes.json();
-    const args = json?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const toolUseBlock = json.content?.find((block: any) => block.type === "tool_use");
     let parsed: any = {};
-    try { parsed = typeof args === "string" ? JSON.parse(args) : (args || {}); } catch { parsed = {}; }
+    if (toolUseBlock?.input) {
+      parsed = toolUseBlock.input;
+    }
 
     // Try to fetch a professional cover image from Open Library / Google Books using the title.
     let cover_url = "";
