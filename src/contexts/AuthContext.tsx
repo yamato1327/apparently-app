@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               google_token_expiry: new Date(Date.now() + 3600 * 1000).toISOString(),
               google_email: session.user.email,
               gmail_connected: true,
+              calendar_connected: true,
             },
             { onConflict: "user_id" }
           )

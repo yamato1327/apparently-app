@@ -574,6 +574,8 @@ export type Database = {
       }
       user_integrations: {
         Row: {
+          calendar_connected: boolean
+          calendar_last_synced_at: string | null
           created_at: string
           gmail_connected: boolean
           gmail_history_id: string | null
@@ -587,6 +589,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          calendar_connected?: boolean
+          calendar_last_synced_at?: string | null
           created_at?: string
           gmail_connected?: boolean
           gmail_history_id?: string | null
@@ -600,6 +604,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          calendar_connected?: boolean
+          calendar_last_synced_at?: string | null
           created_at?: string
           gmail_connected?: boolean
           gmail_history_id?: string | null
