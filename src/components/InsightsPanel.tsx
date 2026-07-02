@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { format, addDays } from "date-fns";
 import { FamEvent } from "@/types/events";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Lightbulb, Sunrise, Car, Moon, Clock, ChevronDown, Trophy } from "lucide-react";
+import { Loader2, Lightbulb, Sunrise, Car, Moon, Clock, ChevronDown, Trophy, RefreshCw } from "lucide-react";
 
 interface InsightsPanelProps {
   events: FamEvent[];
@@ -85,6 +85,40 @@ const PART_LABEL: Record<SlotPart, string> = {
   pickup: "Pick Up",
   evening: "Evening",
 };
+
+const CACHE_KEY = "parent_tips_cache";
+const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
+
+function loadFromCache(date: string, todayCount: number, tomorrowCount: number, milestoneCount: number) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (
+      cached.date !== date ||
+      cached.todayCount !== todayCount ||
+      cached.tomorrowCount !== tomorrowCount ||
+      cached.milestoneCount !== milestoneCount ||
+      Date.now() - cached.timestamp > CACHE_TTL_MS
+    ) return null;
+    return cached.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveToCache(date: string, todayCount: number, tomorrowCount: number, milestoneCount: number, data: unknown) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      date,
+      todayCount,
+      tomorrowCount,
+      milestoneCount,
+      timestamp: Date.now(),
+      data,
+    }));
+  } catch { /* ignore storage errors */ }
+}
 
 function getSlotLabel(now: Date, slot: SlotKey): string {
   const def = SLOT_DEFS[slot];
@@ -172,6 +206,20 @@ const InsightsPanel = ({ events, children: familyChildren }: InsightsPanelProps)
   }, [events]);
 
   const fetchInsights = useCallback(async () => {
+    const cached = loadFromCache(today, todayEvents.length, tomorrowEvents.length, activeMilestones.length);
+    if (cached) {
+      setInsights({
+        today_morning: cached.today_morning || [],
+        today_pickup: cached.today_pickup || [],
+        today_evening: cached.today_evening || [],
+        tomorrow_morning: cached.tomorrow_morning || [],
+        tomorrow_pickup: cached.tomorrow_pickup || [],
+      });
+      setMilestoneFocus(cached.milestone_focus || []);
+      setHasFetched(true);
+      return;
+    }
+
     setLoading(true);
     try {
       const mapEvents = (evts: FamEvent[]) =>
@@ -208,14 +256,23 @@ const InsightsPanel = ({ events, children: familyChildren }: InsightsPanelProps)
       if (error) {
         console.error("Insights error:", error);
       } else {
-        setInsights({
+        const result = {
           today_morning: data?.today_morning || [],
           today_pickup: data?.today_pickup || [],
           today_evening: data?.today_evening || [],
           tomorrow_morning: data?.tomorrow_morning || [],
           tomorrow_pickup: data?.tomorrow_pickup || [],
+          milestone_focus: data?.milestone_focus || [],
+        };
+        saveToCache(today, todayEvents.length, tomorrowEvents.length, activeMilestones.length, result);
+        setInsights({
+          today_morning: result.today_morning,
+          today_pickup: result.today_pickup,
+          today_evening: result.today_evening,
+          tomorrow_morning: result.tomorrow_morning,
+          tomorrow_pickup: result.tomorrow_pickup,
         });
-        setMilestoneFocus(data?.milestone_focus || []);
+        setMilestoneFocus(result.milestone_focus);
       }
     } catch (err) {
       console.error("Failed to fetch insights:", err);
@@ -223,7 +280,12 @@ const InsightsPanel = ({ events, children: familyChildren }: InsightsPanelProps)
       setLoading(false);
       setHasFetched(true);
     }
-  }, [todayEvents.length, tomorrowEvents.length, activeMilestones.length]);
+  }, [today, todayEvents.length, tomorrowEvents.length, activeMilestones.length]);
+
+  const handleRefresh = () => {
+    localStorage.removeItem(CACHE_KEY);
+    fetchInsights();
+  };
 
   useEffect(() => {
     if (todayEvents.length > 0 || tomorrowEvents.length > 0 || activeMilestones.length > 0) {
@@ -261,6 +323,14 @@ const InsightsPanel = ({ events, children: familyChildren }: InsightsPanelProps)
           <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
             📆 {tomorrowEvents.length} tmrw
           </span>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Refresh tips"
+            className="inline-flex items-center justify-center rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
         </div>
       </div>
 
