@@ -15,6 +15,15 @@ export interface DevelopmentScore {
   score: ScoreValue;
   notes: string | null;
   term: string | null;
+  // Report fields — null for manual entries
+  grade: string | null;
+  subject: string | null;
+  sub_area: string | null;
+  teacher_comment: string | null;
+  report_year: number | null;
+  report_term: string | null;
+  source: "manual" | "report";
+  improvement_tips: string[] | null;
 }
 
 export interface MeetingRecord {
@@ -39,6 +48,15 @@ export interface MeetingRecord {
   post_owner_1: string | null;
   post_owner_2: string | null;
   post_owner_3: string | null;
+}
+
+function gradeToScore(grade: string | null): ScoreValue {
+  if (!grade) return "yellow";
+  const g = grade.trim().toUpperCase();
+  if (g === "A" || g === "EXCELLENT") return "green";
+  if (g === "B" || g === "HIGH") return "green";
+  if (g === "C" || g === "SATISFACTORY") return "yellow";
+  return "red"; // D, E, LIMITED, VERY LOW
 }
 
 export function useDevelopment() {
@@ -100,5 +118,67 @@ export function useDevelopment() {
     setMeetings((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
-  return { scores, meetings, loading, upsertScore, removeScore, upsertMeeting, removeMeeting, refetch: fetchAll };
+  const importReport = useCallback(async (
+    childId: string,
+    subjects: Array<{
+      name: string;
+      overall_grade?: string | null;
+      teacher_comment?: string | null;
+      sub_areas: Array<{
+        name: string;
+        grade: string;
+        effort?: string | null;
+        improvement_tips: string[];
+      }>;
+    }>,
+    reportTerm: string | null,
+    reportYear: number | null
+  ) => {
+    if (!user) return;
+
+    if (reportTerm && reportYear) {
+      await supabase
+        .from("development_scores")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("child_id", childId)
+        .eq("source", "report")
+        .eq("report_term", reportTerm)
+        .eq("report_year", reportYear);
+    }
+
+    const rows: any[] = [];
+    for (const subject of subjects) {
+      for (const sa of subject.sub_areas) {
+        rows.push({
+          user_id: user.id,
+          child_id: childId,
+          area: sa.name,
+          category: "academic",
+          score: gradeToScore(sa.grade),
+          grade: sa.grade,
+          subject: subject.name,
+          sub_area: sa.name,
+          teacher_comment: subject.teacher_comment || null,
+          report_term: reportTerm,
+          report_year: reportYear,
+          source: "report",
+          improvement_tips: sa.improvement_tips?.length ? sa.improvement_tips : null,
+          notes: null,
+          term: reportTerm,
+        });
+      }
+    }
+
+    if (rows.length === 0) return;
+    const { data, error } = await supabase.from("development_scores").insert(rows).select("*");
+    if (error) { toast.error("Failed to save report"); console.error(error); return; }
+    setScores((prev) => [
+      ...(data as DevelopmentScore[]),
+      ...prev.filter((s) => !(s.source === "report" && s.report_term === reportTerm && s.report_year === reportYear && s.child_id === childId)),
+    ]);
+    toast.success("Report imported successfully");
+  }, [user]);
+
+  return { scores, meetings, loading, upsertScore, removeScore, upsertMeeting, removeMeeting, refetch: fetchAll, importReport };
 }
