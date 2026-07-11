@@ -16,7 +16,7 @@ const DEFAULTS: EmailPreferences = {
   morning_time: "06:30",
   night_enabled: true,
   night_time: "20:30",
-  timezone: "Australia/Perth",
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Australia/Perth",
   cc_email: null,
 };
 
