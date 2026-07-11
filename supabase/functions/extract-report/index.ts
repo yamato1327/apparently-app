@@ -80,7 +80,10 @@ serve(async (req) => {
       };
     }
 
-    const systemPrompt = `You are an expert at reading Australian school report cards.
+    const systemPrompt = `You are an expert at reading Australian school report cards (WA Curriculum).
+
+IMPORTANT: Many Australian primary school reports have a SINGLE overall teacher comment at the end — not one comment per subject. If that is what you see, put the full comment in the top-level "overall_comment" field and leave every subject's "teacher_comment" as an empty string. Only fill a subject's "teacher_comment" if there is clearly a comment written specifically for that subject.
+
 Extract the complete structured grades from the report.
 
 Australian schools use one of two grading scales:
@@ -90,12 +93,10 @@ Australian schools use one of two grading scales:
 For each subject, extract:
 - The subject name (e.g. "English", "Mathematics")
 - Each sub-area and its grade (e.g. Reading: D, Writing: D)
-- The teacher's overall comment for that subject
+- The teacher's comment for that subject ONLY if it is clearly subject-specific (otherwise leave empty)
 - The report term/semester and year if visible
 
-For areas graded D/E or Limited/Very Low, generate 2–3 practical, specific improvement tips for the parent.
-Tips should be concrete and actionable, not generic. Reference the specific subject and child if their name is visible.
-Each tip should be under 20 words.`;
+IMPROVEMENT TIPS: For any sub-area graded D, E, Limited, or Very Low — always generate 2–3 practical improvement tips for the parent. Generate these tips based on the grade and subject alone, even if there is no teacher comment for that subject. Do not leave improvement_tips empty for weak areas just because there is no teacher comment. Tips should be specific and actionable, under 20 words each.`;
 
     const messages: any[] = [];
     if (imageContent) {
@@ -168,13 +169,17 @@ Each tip should be under 20 words.`;
                 year_level: { type: "string", description: "Year/grade level, e.g. 'Year 4'" },
                 report_term: { type: "string", description: "Term or semester, e.g. 'Semester 1', 'Term 2'" },
                 report_year: { type: "number", description: "Report year, e.g. 2025" },
+                overall_comment: {
+                  type: "string",
+                  description: "The single overall teacher comment if the report has one comment for the whole report rather than per subject. Empty string if comments are per-subject.",
+                },
                 subjects: {
                   type: "array",
                   items: subjectSchema,
                   description: "All subjects extracted from the report",
                 },
               },
-              required: ["subjects"],
+              required: ["overall_comment", "subjects"],
               additionalProperties: false,
             },
           },

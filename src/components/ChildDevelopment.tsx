@@ -314,6 +314,7 @@ function ReportsPanel({
           key={termLabel}
           termLabel={termLabel}
           scores={termScores}
+          childName={child.name}
           onDelete={() => {
             const first = termScores[0];
             deleteReport(first.report_term ?? null, first.report_year ?? null);
@@ -327,10 +328,12 @@ function ReportsPanel({
 function ReportCard({
   termLabel,
   scores,
+  childName,
   onDelete,
 }: {
   termLabel: string;
   scores: ReturnType<typeof useDevelopment>["scores"];
+  childName: string;
   onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -362,6 +365,14 @@ function ReportCard({
           const hasTips = subjectScores.some((s) => s.improvement_tips?.length);
           const teacherComment = subjectScores[0]?.teacher_comment;
           const isExpanded = expanded === subjectName;
+          const isWeak = subjectScores.some((s) => {
+            const g = (s.grade || "").trim().toUpperCase();
+            return g === "D" || g === "E" || g === "LIMITED" || g === "VERY LOW";
+          });
+          const isStrong = subjectScores.every((s) => {
+            const g = (s.grade || "").trim().toUpperCase();
+            return g === "A" || g === "B" || g === "EXCELLENT" || g === "HIGH";
+          });
 
           return (
             <div key={subjectName} className="rounded-xl border bg-background/60 overflow-hidden">
@@ -430,6 +441,18 @@ function ReportCard({
                             </p>
                           ))
                         )}
+                    </div>
+                  )}
+
+                  {!teacherComment && !hasTips && (
+                    <div className="rounded-lg bg-muted/40 border border-border/50 p-2.5">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {isWeak
+                          ? `This report doesn't include subject-specific detail for ${subjectName}. We recommend asking ${childName}'s teacher what specific areas need work, or ask ${childName} directly what feels hardest.`
+                          : isStrong
+                          ? `Great work in ${subjectName}! Ask ${childName} what they enjoy most about this subject to keep the momentum going.`
+                          : `Ask ${childName} what comes easiest and what feels hardest in ${subjectName} — it's a good conversation starter.`}
+                      </p>
                     </div>
                   )}
                 </div>
