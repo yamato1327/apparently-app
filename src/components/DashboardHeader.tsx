@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import { Plus, Camera, Settings, MapPin, Sparkles } from "lucide-react";
+import { Plus, Settings, MapPin, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useWeather, getWeatherIcon, getUVLabel } from "@/hooks/useWeather";
@@ -10,10 +10,9 @@ import ThemeToggle from "@/components/ThemeToggle";
 interface DashboardHeaderProps {
   currentDate: Date;
   onAddEvent: () => void;
-  onUpload: () => void;
 }
 
-const DashboardHeader = ({ currentDate, onAddEvent, onUpload }: DashboardHeaderProps) => {
+const DashboardHeader = ({ currentDate, onAddEvent }: DashboardHeaderProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [profileCity, setProfileCity] = useState<string | null>(null);
@@ -107,13 +106,6 @@ const DashboardHeader = ({ currentDate, onAddEvent, onUpload }: DashboardHeaderP
             >
               <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
               Add event
-            </button>
-            <button
-              onClick={onUpload}
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20 active:scale-[0.98]"
-            >
-              <Camera className="h-4 w-4" />
-              <span>Scan</span>
             </button>
           </div>
         </div>

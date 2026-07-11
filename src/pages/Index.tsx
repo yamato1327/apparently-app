@@ -7,8 +7,8 @@ import MonthlyView from "@/components/MonthlyView";
 import InsightsPanel from "@/components/InsightsPanel";
 import AddEventDialog from "@/components/AddEventDialog";
 import EditEventDialog from "@/components/EditEventDialog";
-import ScreenshotUpload from "@/components/ScreenshotUpload";
 import ChildDevelopment from "@/components/ChildDevelopment";
+import IntegrationsStrip from "@/components/IntegrationsStrip";
 import RemindersStrip from "@/components/RemindersStrip";
 import ReadingTogether from "@/components/ReadingTogether";
 import DigitalLibrary from "@/components/DigitalLibrary";
@@ -40,7 +40,6 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<MainTab>(initialTab);
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<FamEvent | null>(null);
   const { events, loading, addEvent, addMultipleEvents, toggleComplete, deleteEvent, deleteOccurrence, updateEvent, bulkUpdateEmojis } = useEvents();
   const { children: familyChildren } = useChildren();
@@ -111,10 +110,11 @@ const Index = () => {
         <DashboardHeader
           currentDate={today}
           onAddEvent={() => setDialogOpen(true)}
-          onUpload={() => setUploadOpen(true)}
         />
 
         <NowNextStrip events={events} onJumpToPlan={() => handleTabChange("plan")} />
+
+        <IntegrationsStrip />
 
         <MainTabs active={activeTab} onChange={handleTabChange} badges={badges} />
 
@@ -184,11 +184,6 @@ const Index = () => {
 
       <AddEventDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onAdd={addEvent} />
       <EditEventDialog key={editingEvent?.id ?? 'none'} event={editingEvent} onClose={() => setEditingEvent(null)} onSave={updateEvent} />
-      <ScreenshotUpload
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        onEventsExtracted={(newEvents) => addMultipleEvents(newEvents)}
-      />
     </div>
   );
 };

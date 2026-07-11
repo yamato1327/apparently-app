@@ -3,6 +3,7 @@ import { EventCategory, CATEGORY_CONFIG, RecurrenceCycle, MILESTONE_DEFAULT_DAYS
 import { FamEvent } from "@/types/events";
 import { useChildren } from "@/hooks/useChildren";
 import { X, RefreshCw, Trophy } from "lucide-react";
+import ScreenshotUpload from "@/components/ScreenshotUpload";
 
 // "custom" is a UI-only mode persisted as weekly + recurrenceDays.
 type RecurrenceUiMode = RecurrenceCycle | "custom";
@@ -34,6 +35,7 @@ interface AddEventDialogProps {
 const AddEventDialog = ({ open, onClose, onAdd }: AddEventDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState("");
   const [category, setCategory] = useState<EventCategory>("general");
@@ -362,8 +364,28 @@ const AddEventDialog = ({ open, onClose, onAdd }: AddEventDialogProps) => {
           >
             Add Event
           </button>
+
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+            >
+              Or scan a document / photo instead
+            </button>
+          </div>
         </form>
       </div>
+
+      <ScreenshotUpload
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onEventsExtracted={(newEvents) => {
+          if (newEvents[0]) onAdd(newEvents[0]);
+          setScanOpen(false);
+          onClose();
+        }}
+      />
     </div>
   );
 };
