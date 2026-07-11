@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -42,49 +41,51 @@ serve(async (req) => {
       });
     }
 
+    const messages: any[] = [];
     const isPdf = typeof fileBase64 === "string" && fileBase64.startsWith("data:application/pdf");
-    let textContent: string | null = null;
-    let imageContent: { mediaType: string; imageData: string } | null = null;
 
     if (isPdf) {
-      try {
-        const base64 = fileBase64.split(",")[1] ?? "";
-        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-        if (bytes.byteLength > 15 * 1024 * 1024) {
-          return new Response(
-            JSON.stringify({ error: "PDF too large (max 15 MB)" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const pdf = await getDocumentProxy(bytes);
-        const { text } = await extractText(pdf, { mergePages: true });
-        textContent = (text || "").trim().slice(0, 40000);
-        if (!textContent) {
-          return new Response(
-            JSON.stringify({ error: "Could not read text from this PDF. Try uploading a screenshot instead." }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      } catch (pdfErr) {
-        console.error("PDF parse error:", pdfErr);
+      // Send PDF natively to Claude as a document — preserves table/grid layout
+      // that unpdf loses when converting to plain text.
+      const base64Data = fileBase64.split(",")[1] ?? "";
+      if (!base64Data) {
         return new Response(
-          JSON.stringify({ error: "Failed to read PDF" }),
+          JSON.stringify({ error: "Could not read PDF data" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64Data,
+            },
+          },
+          {
+            type: "text",
+            text: `Extract all grades from this school report.${childName ? ` Child's name: ${childName}.` : ""}${childYearLevel ? ` Year level: ${childYearLevel}.` : ""} Read every grade exactly as written — do not guess or invent any values.`,
+          },
+        ],
+      });
     } else {
       const match = fileBase64.match(/^data:(.+?);base64,(.*)$/);
-      imageContent = {
-        mediaType: match?.[1] || "image/jpeg",
-        imageData: match?.[2] || fileBase64,
-      };
+      const mediaType = match?.[1] || "image/jpeg";
+      const imageData = match?.[2] || fileBase64;
+      messages.push({
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: imageData } },
+          { type: "text", text: `Extract all grades from this school report.${childName ? ` Child's name: ${childName}.` : ""}${childYearLevel ? ` Year level: ${childYearLevel}.` : ""}` },
+        ],
+      });
     }
 
-    const systemPrompt = `You are an expert at reading Australian school report cards (WA Curriculum).
-
-IMPORTANT: Many Australian primary school reports have a SINGLE overall teacher comment at the end — not one comment per subject. If that is what you see, put the full comment in the top-level "overall_comment" field and leave every subject's "teacher_comment" as an empty string. Only fill a subject's "teacher_comment" if there is clearly a comment written specifically for that subject.
-
-Extract the complete structured grades from the report.
+    const systemPrompt = `You are an expert at reading Australian school report cards.
+Extract the complete structured grades from the report. Only extract what is actually written in the report — do not invent or assume grades.
 
 Australian schools use one of two grading scales:
 - Upper primary (Years 3–6): A (Excellent), B (High), C (Satisfactory), D (Limited), E (Very Low)
@@ -93,26 +94,11 @@ Australian schools use one of two grading scales:
 For each subject, extract:
 - The subject name (e.g. "English", "Mathematics")
 - Each sub-area and its grade (e.g. Reading: D, Writing: D)
-- The teacher's comment for that subject ONLY if it is clearly subject-specific (otherwise leave empty)
 - The report term/semester and year if visible
 
-IMPROVEMENT TIPS: For any sub-area graded D, E, Limited, or Very Low — always generate 2–3 practical improvement tips for the parent. Generate these tips based on the grade and subject alone, even if there is no teacher comment for that subject. Do not leave improvement_tips empty for weak areas just because there is no teacher comment. Tips should be specific and actionable, under 20 words each.`;
+For teacher comments: many primary school reports have ONE overall comment for the whole report, not per-subject. If that is the case, put the whole comment in "overall_comment" and leave each subject's "teacher_comment" as an empty string. Only fill "teacher_comment" on a subject if there is a comment clearly written for that specific subject.
 
-    const messages: any[] = [];
-    if (imageContent) {
-      messages.push({
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: imageContent.mediaType, data: imageContent.imageData } },
-          { type: "text", text: `Extract all grades from this school report.${childName ? ` Child's name: ${childName}.` : ""}${childYearLevel ? ` Year level: ${childYearLevel}.` : ""}` },
-        ],
-      });
-    } else {
-      messages.push({
-        role: "user",
-        content: `Extract all grades from this school report text.${childName ? ` Child's name: ${childName}.` : ""}${childYearLevel ? ` Year level: ${childYearLevel}.` : ""}\n\n${textContent}`,
-      });
-    }
+For areas graded D, E, Limited, or Very Low — generate 2–3 practical improvement tips for the parent. Tips should be concrete and specific, under 20 words each. Leave improvement_tips as an empty array for grades A, B, C, High, Excellent, or Satisfactory.`;
 
     const subAreaSchema = {
       type: "object",
@@ -154,7 +140,7 @@ IMPROVEMENT TIPS: For any sub-area graded D, E, Limited, or Very Low — always 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: systemPrompt,
         messages,
