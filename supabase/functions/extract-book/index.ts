@@ -9,6 +9,8 @@ interface ReqBody {
   image: string; // base64 data URL
   childName?: string;
   childAge?: number | null;
+  progress?: string | null; // 'beginning', 'middle', 'end', or a page number string like '42'
+  totalPages?: number | null; // optional, if the parent knows total page count
 }
 
 Deno.serve(async (req) => {
@@ -45,13 +47,37 @@ Deno.serve(async (req) => {
 
     const ageHint = body.childAge ? `${body.childName || "the child"} is ${body.childAge}` : (body.childName || "the child");
 
+    const progressDescription = (() => {
+      if (!body.progress || body.progress === "beginning") return "just started the book (beginning)";
+      if (body.progress === "middle") return "about halfway through the book";
+      if (body.progress === "end") return "near the end of or just finished the book";
+      const page = parseInt(body.progress, 10);
+      if (!isNaN(page)) {
+        return body.totalPages
+          ? `on page ${page} of ${body.totalPages}`
+          : `on page ${page}`;
+      }
+      return "somewhere in the book";
+    })();
+
     const sys = `You help a parent have a great conversation about a book their child is reading.
-You are given a photo (the book cover, a page, or the child holding the book).
-Identify the book title if visible. Then craft 3 short, warm conversation questions for the parent to ask:
-- Question 1: about the COVER, ILLUSTRATION, OR TITLE visible in the photo (be specific to what you see).
-- Question 2: a generic comprehension question (favourite character / part / why).
-- Question 3: a generic reflection question (feelings / personal connection / what it reminded them of).
-Keep questions kid-friendly and ${ageHint ? `appropriate for ${ageHint}` : "age-appropriate"}.`;
+You are given a photo of the book (the cover, a page, or the child holding the book).
+
+The child is currently: ${progressDescription}.
+
+IMPORTANT: Do NOT ask questions that reveal, hint at, or spoil plot points, character fates, or events beyond where the child currently is. All questions must be spoiler-free relative to their progress.
+
+Identify the book title if visible. Then craft 3 short, warm conversation questions for the parent to ask ${ageHint ? `${ageHint}` : "the child"}:
+
+Question 1: Always about what is VISIBLE in the photo — the cover art, illustration, title, or anything specific you can see in the image.
+
+Question 2 and Question 3: Tailor to progress level:
+- BEGINNING (just started): Ask about first impressions and predictions. E.g. "What do you think the book will be about?", "Why did you choose this book?", "What do you think will happen based on the cover?"
+- MIDDLE (partway through): Ask about the story so far — characters, favourite moments, predictions for what's ahead. E.g. "Who's your favourite character so far and why?", "What's been the most exciting part?", "What do you think will happen next?" Never ask about the ending or events that may happen later.
+- END (near end or finished): Ask about the whole book — the ending, themes, overall reaction. E.g. "What was your favourite part of the whole book?", "Was the ending what you expected?", "Would you recommend it to a friend and why?"
+- SPECIFIC PAGE (e.g. page 42): Similar to middle, but only ask about things that plausibly happened before that page. Do not hint at anything that may happen later.
+
+Keep all questions kid-friendly and age-appropriate.`;
 
     const match = body.image.match(/^data:(.+?);base64,(.*)$/);
     const mediaType = match?.[1] || "image/jpeg";

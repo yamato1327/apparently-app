@@ -15,6 +15,7 @@ export interface ReadingBook {
   is_read: boolean;
   read_at: string | null;
   cover_url: string | null;
+  progress: string | null; // 'beginning' | 'middle' | 'end' | page number string
 }
 
 export function useReadingBooks() {
@@ -114,5 +115,64 @@ export function useReadingBooks() {
     return data.signedUrl;
   }, []);
 
-  return { books, loading, addBook, removeBook, toggleRead, getSignedUrl, refetch: fetchBooks };
+  const updateProgress = useCallback(async (
+    bookId: string,
+    progress: string,
+    childName?: string,
+    childAge?: number | null
+  ) => {
+    if (!user) return;
+
+    const book = books.find((b) => b.id === bookId);
+    if (!book) return;
+
+    // Optimistically update progress in UI immediately
+    setBooks((prev) => prev.map((b) => b.id === bookId ? { ...b, progress } : b));
+
+    // Save progress to DB
+    await supabase.from("reading_books").update({ progress }).eq("id", bookId);
+
+    // Regenerate questions using the stored photo
+    if (!book.photo_path) return;
+    try {
+      const { data: signedData } = await supabase.storage
+        .from("reading-photos")
+        .createSignedUrl(book.photo_path, 120);
+      if (!signedData?.signedUrl) return;
+
+      const imgResponse = await fetch(signedData.signedUrl);
+      const blob = await imgResponse.blob();
+      const base64 = await new Promise<string>((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result as string);
+        reader.onerror = rej;
+        reader.readAsDataURL(blob);
+      });
+
+      const { data: ai, error: aiErr } = await supabase.functions.invoke("extract-book", {
+        body: { image: base64, progress, childName, childAge },
+      });
+
+      if (aiErr || ai?.error) {
+        toast.error("Couldn't regenerate questions");
+        return;
+      }
+
+      const updates = {
+        question_1: ai.question_1 || null,
+        question_2: ai.question_2 || null,
+        question_3: ai.question_3 || null,
+      };
+      await supabase.from("reading_books").update(updates).eq("id", bookId);
+      setBooks((prev) =>
+        prev.map((b) => b.id === bookId ? { ...b, ...updates } : b)
+      );
+      toast.success("Questions updated 📚");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to update questions");
+    }
+  }, [user, books]);
+
+  return { books, loading, addBook, removeBook, toggleRead, getSignedUrl, refetch: fetchBooks, updateProgress };
 }
