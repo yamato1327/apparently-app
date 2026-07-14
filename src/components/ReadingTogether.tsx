@@ -11,7 +11,7 @@ import TonightsReading from "@/components/TonightsReading";
 
 export default function ReadingTogether() {
   const { children: kids } = useChildren();
-  const { books, loading, addBook, removeBook, toggleRead, getSignedUrl } = useReadingBooks();
+  const { books, loading, addBook, removeBook, toggleRead, getSignedUrl, updateProgress } = useReadingBooks();
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -254,6 +254,7 @@ export default function ReadingTogether() {
                 getSignedUrl={getSignedUrl}
                 onDelete={removeBook}
                 onToggleRead={toggleRead}
+                onUpdateProgress={updateProgress}
               />
             ))}
           </div>
@@ -272,17 +273,41 @@ export default function ReadingTogether() {
 }
 
 function BookRow({
-  book, child, getSignedUrl, onDelete, onToggleRead,
+  book, child, getSignedUrl, onDelete, onToggleRead, onUpdateProgress,
 }: {
   book: ReadingBook;
   child?: Child;
   getSignedUrl: (path: string) => Promise<string | null>;
   onDelete: (id: string) => Promise<void>;
   onToggleRead: (id: string, isRead: boolean) => Promise<void>;
+  onUpdateProgress: (bookId: string, progress: string, childName?: string, childAge?: number | null) => Promise<void>;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
+  const [updatingProgress, setUpdatingProgress] = useState(false);
+  const [pageInput, setPageInput] = useState("");
+  const [showPageInput, setShowPageInput] = useState(false);
+
+  const currentProgress = book.progress || "beginning";
+
+  const handleProgressChange = async (newProgress: string) => {
+    setUpdatingProgress(true);
+    const childAge = child?.birth_year
+      ? new Date().getFullYear() - child.birth_year
+      : null;
+    await onUpdateProgress(book.id, newProgress, child?.name, childAge);
+    setUpdatingProgress(false);
+    setShowPageInput(false);
+  };
+
+  const handlePageSubmit = async () => {
+    const page = parseInt(pageInput.trim(), 10);
+    if (!isNaN(page) && page > 0) {
+      await handleProgressChange(String(page));
+      setPageInput("");
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -371,7 +396,75 @@ function BookRow({
         </Button>
       </div>
       {open && hasQuestions && (
-        <div className="px-3 pb-3 pl-[4.25rem]">
+        <div className="px-3 pb-3 pl-[4.25rem] space-y-3">
+          {/* Progress picker */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+              How far in?
+            </p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(["beginning", "middle", "end"] as const).map((p) => (
+                <button
+                  key={p}
+                  disabled={updatingProgress}
+                  onClick={() => {
+                    setShowPageInput(false);
+                    handleProgressChange(p);
+                  }}
+                  className={`px-3 py-1 text-[11px] font-semibold rounded-full border capitalize transition-all ${
+                    currentProgress === p && !showPageInput
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                disabled={updatingProgress}
+                onClick={() => setShowPageInput((v) => !v)}
+                className={`px-3 py-1 text-[11px] font-semibold rounded-full border transition-all ${
+                  showPageInput || (!["beginning", "middle", "end"].includes(currentProgress))
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                Page #
+              </button>
+              {updatingProgress && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              )}
+            </div>
+
+            {showPageInput && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 42"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handlePageSubmit()}
+                  className="w-24 rounded-lg border border-border bg-background px-2.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  onClick={handlePageSubmit}
+                  disabled={!pageInput.trim() || updatingProgress}
+                  className="px-3 py-1 text-[11px] font-semibold rounded-full bg-primary text-primary-foreground disabled:opacity-40 transition-opacity"
+                >
+                  Update
+                </button>
+              </div>
+            )}
+
+            {!showPageInput && !["beginning", "middle", "end"].includes(currentProgress) && (
+              <p className="text-[11px] text-muted-foreground">
+                Currently on page {currentProgress}
+              </p>
+            )}
+          </div>
+
+          {/* Questions list */}
           <ol className="space-y-1.5 list-decimal list-inside">
             {questions.map((q, i) => (
               <li key={i} className="text-sm leading-snug text-foreground">{q}</li>
