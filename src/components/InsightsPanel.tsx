@@ -491,16 +491,6 @@ const InsightsPanel = ({ events, children: familyChildren }: InsightsPanelProps)
         </div>
       )}
 
-      {/* Footer */}
-      {hasFetched && !loading && (todayEvents.length > 0 || tomorrowEvents.length > 0) && (
-        <div className="px-6 py-3 border-t bg-muted/30 flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>✅ {todayEvents.filter((e) => e.isCompleted).length}/{todayEvents.length} completed today</span>
-          <span className="flex items-center gap-1">
-            <Lightbulb className="h-3 w-3" /> Powered by AI
-          </span>
-        </div>
-      )}
-
     </div>
   );
 };
