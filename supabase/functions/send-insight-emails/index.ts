@@ -535,14 +535,14 @@ Deno.serve(async (req) => {
         });
       }
       const token = authHeader.replace("Bearer ", "");
-      const { data: claims, error: claimsErr } = await admin.auth.getClaims(token);
-      if (claimsErr || !claims?.claims?.sub) {
+      const { data: { user: callerUser }, error: claimsErr } = await admin.auth.getUser(token);
+      if (claimsErr || !callerUser?.id) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       // Force userId to the authenticated caller — never trust client-supplied id
-      const callerId = claims.claims.sub;
+      const callerId = callerUser.id;
       const { data: pref } = await admin
         .from("email_preferences")
         .select("*")
