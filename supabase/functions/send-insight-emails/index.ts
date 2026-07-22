@@ -485,7 +485,13 @@ async function processOne(pref: Pref, kind: "morning" | "night", forceTodayStr?:
   const weather = kind === "morning" ? await loadWeatherForToday(profile.state) : undefined;
   const currentHour = kind === "morning" ? 7 : 20;
 
-  const slots = await callParentTips({ todayEvents, tomorrowEvents, children, currentHour });
+  const emptySlots = { today_morning: [], today_pickup: [], today_evening: [], tomorrow_morning: [], tomorrow_pickup: [], milestone_focus: [] };
+  let slots: any = emptySlots;
+  try {
+    slots = await callParentTips({ todayEvents, tomorrowEvents, children, currentHour });
+  } catch (e) {
+    console.error("send-insight-emails: parent-tips failed, sending without AI tips", { error: String(e) });
+  }
 
   const dateLabel = dateLabelFor(tz, today);
   const tomorrowLabel = dateLabelFor(tz, tomorrow);
@@ -530,6 +536,7 @@ Deno.serve(async (req) => {
       // Validate caller JWT for test sends (in-code, since verify_jwt = false at gateway)
       const authHeader = req.headers.get("Authorization");
       if (!authHeader?.startsWith("Bearer ")) {
+        console.error("send-insight-emails test: missing or malformed Authorization header");
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -537,6 +544,7 @@ Deno.serve(async (req) => {
       const token = authHeader.replace("Bearer ", "");
       const { data: { user: callerUser }, error: claimsErr } = await admin.auth.getUser(token);
       if (claimsErr || !callerUser?.id) {
+        console.error("send-insight-emails test: JWT validation failed", { error: claimsErr?.message });
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -549,6 +557,7 @@ Deno.serve(async (req) => {
         .eq("user_id", callerId)
         .maybeSingle();
       if (!pref) {
+        console.error("send-insight-emails test: no email_preferences row", { userId: callerId });
         return new Response(JSON.stringify({ error: "No preferences row" }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
