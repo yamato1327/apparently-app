@@ -551,11 +551,17 @@ Deno.serve(async (req) => {
       }
       // Force userId to the authenticated caller — never trust client-supplied id
       const callerId = callerUser.id;
-      const { data: pref } = await admin
+      const { data: pref, error: prefError } = await admin
         .from("email_preferences")
         .select("*")
         .eq("user_id", callerId)
         .maybeSingle();
+      if (prefError) {
+        console.error("send-insight-emails test: email_preferences query failed", { userId: callerId, error: prefError.message, code: prefError.code });
+        return new Response(JSON.stringify({ error: "Failed to load preferences", detail: prefError.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       if (!pref) {
         console.error("send-insight-emails test: no email_preferences row", { userId: callerId });
         return new Response(JSON.stringify({ error: "No preferences row" }), {
