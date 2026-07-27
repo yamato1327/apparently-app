@@ -1,0 +1,13 @@
+-- service_role needs table-level SELECT on email_preferences to read every
+-- user's row for the digest cron job and test-send flow.
+--
+-- RLS bypass (BYPASSRLS on the service_role Postgres role) and table-level
+-- GRANT are separate Postgres permission layers. Having BYPASSRLS does NOT
+-- imply the role has SELECT granted on the table. Without this grant, the
+-- admin client in send-insight-emails fails with:
+--   "permission denied for table email_preferences" (Postgres code 42501)
+--
+-- This was not automatically provisioned on oldioruajgcebdbepzwf. The gap
+-- only affects service_role queries — authenticated user queries were
+-- unaffected because the RLS policies already granted SELECT to authenticated.
+GRANT SELECT ON public.email_preferences TO service_role;
