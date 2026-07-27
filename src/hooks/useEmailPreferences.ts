@@ -72,7 +72,24 @@ export const useEmailPreferences = () => {
       const { data, error } = await supabase.functions.invoke("send-insight-emails", {
         body: { test: true, kind, userId: user.id },
       });
-      if (error) return { ok: false, error: error.message };
+      if (error) {
+        // error.message is always the generic "Edge Function returned a non-2xx status code".
+        // The real error body is on error.context (the raw Response object).
+        let detail = error.message;
+        const context = (error as any)?.context;
+        if (context && typeof context.json === "function") {
+          try {
+            const body = await context.clone().json();
+            if (body?.error) detail = body.detail ? `${body.error}: ${body.detail}` : body.error;
+          } catch {
+            try {
+              const text = await context.clone().text();
+              if (text) detail = text;
+            } catch { /* keep generic message */ }
+          }
+        }
+        return { ok: false, error: detail };
+      }
       return { ok: true, data };
     },
     [user],

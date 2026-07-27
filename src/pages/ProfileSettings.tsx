@@ -122,7 +122,7 @@ const ProfileSettings = () => {
     if (res.ok) {
       toast.success(`✉️ Test ${kind} email queued — check your inbox in a moment`);
     } else {
-      toast.error(res.error || "Failed to send test");
+      toast.error(res.error || "Failed to send test", { duration: 8000 });
     }
     if (kind === "morning") setTestingMorning(false); else setTestingNight(false);
   };
