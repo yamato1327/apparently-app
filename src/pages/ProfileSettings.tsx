@@ -120,7 +120,12 @@ const ProfileSettings = () => {
     if (kind === "morning") setTestingMorning(true); else setTestingNight(true);
     const res = await sendTest(kind);
     if (res.ok) {
-      toast.success(`✉️ Test ${kind} email queued — check your inbox in a moment`);
+      const result = (res.data as any)?.result;
+      if (result?.skipped === "no_email") {
+        toast.error("No email address on file — add one in your account settings to receive digests", { duration: 8000 });
+      } else {
+        toast.success(`✉️ Test ${kind} email queued — check your inbox in a moment`);
+      }
     } else {
       toast.error(res.error || "Failed to send test", { duration: 8000 });
     }
