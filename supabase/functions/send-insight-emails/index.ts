@@ -462,7 +462,8 @@ function dateLabelFor(tz: string, dateStr: string): string {
   return d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: tz });
 }
 
-async function processOne(pref: Pref, kind: "morning" | "night", forceTodayStr?: string): Promise<{ skipped?: string; sent?: boolean }> {
+async function processOne(pref: Pref, kind: "morning" | "night", opts: { forceTodayStr?: string; isTest?: boolean } = {}): Promise<{ skipped?: string; sent?: boolean }> {
+  const { forceTodayStr, isTest = false } = opts;
   const tz = pref.timezone || "Australia/Perth";
   const { date: todayStr } = localParts(tz);
   const today = forceTodayStr || todayStr;
@@ -505,7 +506,11 @@ async function processOne(pref: Pref, kind: "morning" | "night", forceTodayStr?:
         manageUrl, viewInBrowserUrl,
       });
 
-  const idempotencyKey = `insight-${kind}-${pref.user_id}-${today}`;
+  // Test sends get a unique key per attempt so repeated clicks don't collide.
+  // The scheduled path keeps a deterministic per-day key to prevent double-sends.
+  const idempotencyKey = isTest
+    ? `insight-${kind}-${pref.user_id}-${today}-test-${Date.now()}`
+    : `insight-${kind}-${pref.user_id}-${today}`;
   await sendEmail(templateName, profile.email, idempotencyKey, { ...templateData, isCcRecipient: false });
 
   // CC: send the same rendered email to the secondary address if configured
@@ -564,7 +569,7 @@ Deno.serve(async (req) => {
         });
       }
       // Force send regardless of time
-      const result = await processOne(pref as Pref, body.kind);
+      const result = await processOne(pref as Pref, body.kind, { isTest: true });
       return new Response(JSON.stringify({ ok: true, kind: body.kind, result }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
