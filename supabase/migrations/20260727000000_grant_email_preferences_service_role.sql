@@ -1,3 +1,5 @@
+-- SUPERSEDED by 20260727010000_grant_service_role_schema_wide.sql (schema-wide fix).
+--
 -- service_role needs table-level SELECT on email_preferences to read every
 -- user's row for the digest cron job and test-send flow.
 --
