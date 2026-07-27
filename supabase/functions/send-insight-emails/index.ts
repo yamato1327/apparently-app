@@ -17,7 +17,7 @@ interface Pref {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const APP_URL = "https://stay-at-home.lovable.app";
+const APP_URL = "https://apparently-app.vercel.app";
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -476,11 +476,6 @@ async function processOne(pref: Pref, kind: "morning" | "night", forceTodayStr?:
   // Reminders (today for morning email, tomorrow for night email)
   const reminderDate = kind === "morning" ? today : tomorrow;
   const reminders = await loadRemindersForDate(pref.user_id, reminderDate, children);
-
-  // Skip only if literally nothing to say
-  if (todayEvents.length === 0 && tomorrowEvents.length === 0 && reminders.length === 0) {
-    return { skipped: "no_content" };
-  }
 
   const weather = kind === "morning" ? await loadWeatherForToday(profile.state) : undefined;
   const currentHour = kind === "morning" ? 7 : 20;

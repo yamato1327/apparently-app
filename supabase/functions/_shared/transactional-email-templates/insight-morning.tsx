@@ -5,7 +5,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'APParently'
-const APP_URL = 'https://stay-at-home.lovable.app'
+const APP_URL = 'https://apparently-app.vercel.app'
 const BRAND = '#0E8F7F'
 const BRAND_DARK = '#0A6B5F'
 const CORAL = '#F26D5B'
